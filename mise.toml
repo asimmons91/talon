@@ -2,13 +2,13 @@
 ruby = "4.0.7"
 
 [tasks.test]
-description = "Run every test file in test/ via DragonRuby"
+description = "Run every *_tests.rb file in test/ via DragonRuby"
 shell = "bash -c"
 run = '''
 set -uo pipefail
 shopt -s globstar nullglob
 
-files=(test/**/*.rb)
+files=(test/**/*_tests.rb)
 if [[ -z "${files[*]:-}" ]]; then
   echo "No test files found in test/" >&2
   exit 1
