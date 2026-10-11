@@ -34,6 +34,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the scene
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#set_callback
     def self.on_enter(*method_names, &block)
@@ -45,6 +47,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the scene
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#set_callback
     def self.on_exit(*method_names, &block)

@@ -43,6 +43,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the component
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#set_callback
     def self.on_start(*method_names, &block)
@@ -54,6 +56,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the component
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#set_callback
     def self.on_destroy(*method_names, &block)
@@ -65,6 +69,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the component
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#define_callback
     def self.on_update(*method_names, &block)
@@ -77,6 +83,8 @@ module Talon
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the component
+    # @yieldparam args [GTK::Args] the current DragonRuby args (omit the
+    #   parameter to ignore it)
     # @return [void]
     # @see Callbacks::ClassMethods#define_callback
     def self.on_draw(*method_names, &block)
