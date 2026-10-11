@@ -290,6 +290,13 @@ class SceneTests
     assert.equal! hero.hp, 7
   end
 
+  def test_spawn_passes_sprite_attributes_through(args, assert)
+    scene = scene_with_args(args)
+    go = scene.spawn(:player, x: 10, y: 20, path: "sprites/player.png")
+
+    assert.equal! [ go.x, go.y, go.path ], [ 10, 20, "sprites/player.png" ]
+  end
+
   def test_unknown_keywords_raise(args, assert)
     scene = scene_with_args(args)
     scene_error = capture_error(ArgumentError) { Level.new(scroe: 1) }

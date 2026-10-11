@@ -256,9 +256,10 @@ class GameObjectTests
   def test_teardown_clears_object_and_component_state(args, assert)
     scene = Level.new
     scene.args = args
-    hero = Hero.new(:hero, scene: scene, hp: 5)
+    hero = Hero.new(:hero, scene: scene, hp: 5, x: 3)
     hero.add(Health, hp: 7)
     hero.hp
+    hero.x
     hero[Health].hp
     hero.teardown
 
@@ -308,9 +309,44 @@ class GameObjectTests
     assert.equal! log.map(&:first), [ :start, :update ]
   end
 
+  def test_sprite_attributes_come_from_keywords_and_are_stored_per_scene(args, assert)
+    scene = Level.new
+    scene.args = args
+    hero = Hero.new(:hero, scene: scene, x: 10, y: 20, path: "sprites/hero.png")
+    hero.w = 32
+
+    assert.equal! [ hero.x, hero.y, hero.w, hero.path ], [ 10, 20, 32, "sprites/hero.png" ]
+    assert.equal! args.state.objects[:"GameObjectTests::Level"][:hero],
+                  { x: 10, y: 20, w: 32, path: "sprites/hero.png" }
+  end
+
+  def test_game_objects_are_sprite_primitives(args, assert)
+    scene = Level.new
+    scene.args = args
+    go = Talon::GameObject.new(:sprite, scene: scene)
+
+    assert.equal! go.primitive_marker, :sprite
+    assert.true! go.sprite.equal?(go), "sprite should return the object"
+    assert.false! go.is_a?(AttrSprite), "AttrSprite objects are rendered from ivars, not state"
+  end
+
+  def test_game_objects_support_rect_helpers(args, assert)
+    scene = Level.new
+    scene.args = args
+    a = Talon::GameObject.new(:a, scene: scene, x: 0, y: 0, w: 10, h: 10)
+    b = Talon::GameObject.new(:b, scene: scene, x: 5, y: 5, w: 10, h: 10)
+    c = Talon::GameObject.new(:c, scene: scene, x: 20, y: 20, w: 10, h: 10)
+
+    assert.equal! [ b.right, b.top ], [ 15, 15 ]
+    assert.true! a.intersect_rect?(b)
+    assert.false! a.intersect_rect?(c)
+  end
+
   def test_reading_state_without_a_scene_raises(_args, assert)
     error = capture_error(RuntimeError) { Hero.new(:lonely).hp }
+    sprite_error = capture_error(RuntimeError) { Hero.new(:lonely).x }
 
     assert.true! error&.message&.include?("added to a scene"), "expected RuntimeError, got #{error.inspect}"
+    assert.true! sprite_error&.message&.include?("added to a scene"), "expected RuntimeError, got #{sprite_error.inspect}"
   end
 end
