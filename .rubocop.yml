@@ -1,0 +1,10 @@
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+
+AllCops:
+  Include:
+    - "talon/**/*.rb"
+
+Style/StringLiterals:
+  Include:
+    - "talon/**/*.rb"
