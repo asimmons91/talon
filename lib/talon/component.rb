@@ -1,41 +1,101 @@
 module Talon
-  class Componet
+  # A unit of behaviour attached to a {GameObject}. Subclass it and declare
+  # props, state and lifecycle hooks.
+  #
+  # Props ({Configurable}) and state ({Stateful}) are both set from the
+  # keywords passed to {GameObject#add}. State is stored per scene, game
+  # object and component class.
+  #
+  # Hook blocks and methods may take one parameter, which receives the
+  # current DragonRuby +args+ (also available as {#args} and its helpers such
+  # as +outputs+ and +inputs+). A hand-written +update+ or +draw+ method must
+  # accept it.
+  #
+  # @example
+  #   class Mover < Talon::Component
+  #     prop :speed, default: 2
+  #     state :x, default: 0
+  #
+  #     on_update { self.x += speed }
+  #   end
+  #
+  #   player.add(Mover, speed: 4)
+  class Component
     attr_dr
 
     include Configurable
     include Stateful
     include Callbacks
 
-    # @return [GameObject]
+    # @return [GameObject] the game object this component is attached to
     attr_accessor :go
 
+    # @param value [Boolean] whether {GameObject#update} and
+    #   {GameObject#draw} should call this component
+    # @return [Boolean]
     attr_writer :enabled
 
+    # Registers callbacks to run once, on the first update after the
+    # component is attached.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the component
+    # @return [void]
+    # @see Callbacks::ClassMethods#set_callback
     def self.on_start(*method_names, &block)
       set_callback(:start, *method_names, &block)
     end
 
+    # Registers callbacks to run when the component's game object is torn
+    # down, either because it was destroyed or because its scene ended.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the component
+    # @return [void]
+    # @see Callbacks::ClassMethods#set_callback
     def self.on_destroy(*method_names, &block)
       set_callback(:destroy, *method_names, &block)
     end
 
+    # Defines the component's per-tick +update+ method. Called every tick
+    # while the component is enabled and its game object is active.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the component
+    # @return [void]
+    # @see Callbacks::ClassMethods#define_callback
     def self.on_update(*method_names, &block)
       define_callback(:update, *method_names, &block)
     end
 
+    # Defines the component's per-tick +draw+ method. Called every tick, after
+    # all game objects have updated, while the component is enabled and its
+    # game object is active.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the component
+    # @return [void]
+    # @see Callbacks::ClassMethods#define_callback
     def self.on_draw(*method_names, &block)
       define_callback(:draw, *method_names, &block)
     end
 
+    # Usually called through {GameObject#add} rather than directly.
+    #
+    # @param props [Hash{Symbol => Object}] initial values for declared props
+    #   and state
+    # @raise [ArgumentError] if a keyword isn't a declared prop or state value
     def initialize(**props)
       @enabled = true
       assign_props(extract_state(props))
     end
 
+    # @return [Boolean] whether this component receives update and draw calls
     def enabled?
       @enabled
     end
 
+    # @return [Scene] the scene of the game object this component is attached to
     def scene
       go.scene
     end
@@ -43,7 +103,7 @@ module Talon
     private
 
     def state_store
-      raise "#{self.class} state read before it was attached to as scene" unless go&.scene
+      raise "#{self.class} state read before it was attached to a scene" unless go&.scene
 
       scenes = args.state.components ||= {}
       objects = scenes[go.scene.class.name.to_sym] ||= {}
