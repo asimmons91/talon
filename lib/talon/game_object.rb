@@ -4,7 +4,8 @@ module Talon
   #
   # The name keys the object's {Stateful} values (and those of its
   # components) in +args.state+, so it should be unique within its scene and
-  # stable across reloads.
+  # stable across reloads. That state is cleared when the object is removed
+  # from its scene, so a later object with the same name starts fresh.
   class GameObject
     attr_dr
 
@@ -39,9 +40,13 @@ module Talon
       @tags = tags
       @active = true
 
-      @components = {}
+      @destroyed = false
+
+      # @type [Array<Component>]
+      @components = []
       self.args = scene.args if scene
 
+      # Attached components whose +on_start+ hasn't run yet.
       # @type [Array<Component>]
       @fresh = []
 
@@ -60,7 +65,18 @@ module Talon
     # @return [void]
     def args=(value)
       super
-      @components.each_value { |c| c.args = value }
+      @components.each { |c| c.args = value }
+    end
+
+    # @return [Array<Component>] the attached components, in the order they
+    #   were added
+    def components
+      @components.dup
+    end
+
+    # @return [Boolean] whether the object has been torn down
+    def destroyed?
+      @destroyed
     end
 
     # @return [Boolean] whether the object and its components update and draw
@@ -84,45 +100,45 @@ module Talon
     end
 
     # Attaches an already-built component to this object. Its +on_start+
-    # callbacks run on the object's next {#update}.
+    # callbacks run on the object's next {#update} while it is enabled, and
+    # it isn't updated or drawn until they have.
     #
     # @param component [Component]
     # @return [self]
     def <<(component)
       component.go = self
       component.args = args
-      @components[component.class] = component
+      @components << component
       @fresh << component
-      @updaters << component if component.respond_to?(:update)
-      @drawers << component if component.respond_to?(:draw)
       self
     end
 
-    # Looks up an attached component by class, falling back to the first one
-    # that is an instance of a subclass.
+    # Looks up an attached component by class, preferring the first one of
+    # exactly that class and falling back to the first instance of a
+    # subclass.
     #
     # @param klass [Class<Component>]
     # @return [Component, nil]
     def [](klass)
-      @components[klass] || @components.values.find { |c| c.is_a?(klass) }
+      @components.find { |c| c.instance_of?(klass) } || @components.find { |c| c.is_a?(klass) }
     end
 
-    # Runs +on_start+ for newly attached components, then updates every
-    # enabled component. Does nothing while the object is inactive. Called by
-    # {Scene#tick}.
+    # Runs +on_start+ for enabled components that haven't started, then
+    # updates every started, enabled component. Disabled components start
+    # once they are enabled. Does nothing while the object is inactive.
+    # Called by {Scene#tick}.
     #
     # @return [void]
     def update
       return unless active?
 
-      @fresh.each { |c| c.run_callbacks(:start, args) }
-      @fresh.clear
+      start_components unless @fresh.empty?
 
       @updaters.each { |c| c.update(args) if c.enabled? }
     end
 
-    # Draws every enabled component. Does nothing while the object is
-    # inactive. Called by {Scene#tick}.
+    # Draws every started, enabled component. Does nothing while the object
+    # is inactive. Called by {Scene#tick}.
     #
     # @return [void]
     def draw
@@ -140,15 +156,43 @@ module Talon
       scene.destroy(self)
     end
 
-    # Runs every component's +on_destroy+ callbacks. Called by the scene when
-    # the object is removed; use {#destroy} to remove an object.
+    # Runs every component's +on_destroy+ callbacks, then clears the object's
+    # and its components' state from +args.state+. Only the first call has
+    # any effect. Called by the scene when the object is removed; use
+    # {#destroy} to remove an object.
     #
+    # @param forget_state [Boolean] whether to clear the state; the scene
+    #   passes false when another object in it has the same name
     # @return [void]
-    def teardown
-      @components.each_value { |c| c.run_callbacks(:destroy, args) }
+    def teardown(forget_state: true)
+      return if @destroyed
+
+      @destroyed = true
+      @components.each { |c| c.run_callbacks(:destroy, args) }
+      clear_state if forget_state
     end
 
     private
+
+    def start_components
+      starting = @fresh.select(&:enabled?)
+      return if starting.empty?
+
+      @fresh -= starting
+      starting.each do |c|
+        c.run_callbacks(:start, args)
+        @updaters << c if c.respond_to?(:update)
+        @drawers << c if c.respond_to?(:draw)
+      end
+    end
+
+    def clear_state
+      return unless scene && args
+
+      scene_key = scene.class.name.to_sym
+      args.state.objects&.[](scene_key)&.delete(name)
+      args.state.components&.[](scene_key)&.delete(name)
+    end
 
     def state_store
       raise "#{name.inspect} state read before it was added to a scene" unless scene

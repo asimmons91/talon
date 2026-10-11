@@ -4,7 +4,9 @@ module Talon
   #
   # Props ({Configurable}) and state ({Stateful}) are both set from the
   # keywords passed to {GameObject#add}. State is stored per scene, game
-  # object and component class.
+  # object and component class; when an object has several components of
+  # the same class, each one after the first gets its own slot, numbered in
+  # the order they were added.
   #
   # Hook blocks and methods may take one parameter, which receives the
   # current DragonRuby +args+ (also available as {#args} and its helpers such
@@ -28,7 +30,7 @@ module Talon
     include Callbacks
 
     # @return [GameObject] the game object this component is attached to
-    attr_accessor :go
+    attr_reader :go
 
     # @param value [Boolean] whether {GameObject#update} and
     #   {GameObject#draw} should call this component
@@ -36,7 +38,8 @@ module Talon
     attr_writer :enabled
 
     # Registers callbacks to run once, on the first update after the
-    # component is attached.
+    # component is attached while it is enabled. The component isn't updated
+    # or drawn until they have run.
     #
     # @param method_names [Array<Symbol>] instance methods to call
     # @yield [args] optional callback, evaluated on the component
@@ -95,6 +98,15 @@ module Talon
       @enabled
     end
 
+    # Attaches the component to a game object. Called by {GameObject#<<}.
+    #
+    # @param value [GameObject]
+    # @return [void]
+    def go=(value)
+      @go = value
+      @state_key = nil
+    end
+
     # @return [Scene] the scene of the game object this component is attached to
     def scene
       go.scene
@@ -108,7 +120,16 @@ module Talon
       scenes = args.state.components ||= {}
       objects = scenes[go.scene.class.name.to_sym] ||= {}
       components = objects[go.name] ||= {}
-      components[self.class.name.to_sym] ||= {}
+      components[state_key] ||= {}
+    end
+
+    # The first component of a class on a game object uses the class name;
+    # later ones are suffixed with their position, e.g. +:"Mover#2"+.
+    def state_key
+      @state_key ||= begin
+        position = go.components.select { |c| c.instance_of?(self.class) }.index { |c| c.equal?(self) }
+        position.zero? ? self.class.name.to_sym : :"#{self.class.name}##{position + 1}"
+      end
     end
   end
 end

@@ -6,6 +6,9 @@ module Talon
   # Objects spawned or destroyed during a tick are added or removed at a tick
   # boundary, so iterating the scene is always safe.
   #
+  # Scene state is keyed by the scene's class and cleared on {#teardown}, so
+  # entering a new instance of a scene starts from its defaults.
+  #
   # @example
   #   class Level < Talon::Scene
   #     state :score, default: 0
@@ -86,17 +89,24 @@ module Talon
     end
 
     # Queues a game object for removal at the end of the current tick, when
-    # its components' +on_destroy+ callbacks run.
+    # its components' +on_destroy+ callbacks run and its state is cleared.
+    # Objects that are already queued or destroyed are ignored.
     #
     # @param game_object [GameObject]
     # @return [void]
     def destroy(game_object)
+      return if game_object.destroyed? || @outgoing.include?(game_object)
+
       @outgoing << game_object
     end
 
     # Advances the scene one frame: adds newly spawned objects, updates and
     # then draws every object, and removes destroyed objects. Called by
     # {Game#tick}.
+    #
+    # A destroyed object's state is kept if an object that remains in the
+    # scene has the same name, such as one respawned in the same tick, since
+    # the two share it.
     #
     # @return [void]
     def tick
@@ -106,16 +116,21 @@ module Talon
       each { |e| e.update }
       each { |e| e.draw }
 
-      return if @outgoing.empty?
-
-      @outgoing.each { |e| e.teardown }
-      @game_objects -= @outgoing
-      @incoming -= @outgoing
-      @outgoing.clear
+      # Loops because +on_destroy+ callbacks may destroy further objects.
+      until @outgoing.empty?
+        removing = @outgoing
+        @outgoing = []
+        @game_objects -= removing
+        @incoming -= removing
+        names = (@game_objects + @incoming).map(&:name)
+        removing.each { |e| e.teardown(forget_state: !names.include?(e.name)) }
+      end
     end
 
-    # Runs the scene's +:exit+ callbacks, tears down every game object, and
-    # empties the scene. Called by {Game#tick} when switching scenes.
+    # Runs the scene's +:exit+ callbacks, tears down every game object,
+    # empties the scene, and then clears the scene's state and that of its
+    # objects and components from +args.state+. Called by {Game#tick} when
+    # switching scenes.
     #
     # @return [void]
     def teardown
@@ -125,9 +140,19 @@ module Talon
       @game_objects.clear
       @incoming.clear
       @outgoing.clear
+      clear_state
     end
 
     private
+
+    def clear_state
+      return unless args
+
+      key = self.class.name.to_sym
+      args.state.scenes&.delete(key)
+      args.state.objects&.delete(key)
+      args.state.components&.delete(key)
+    end
 
     def state_store
       scenes = args.state.scenes ||= {}
