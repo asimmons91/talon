@@ -1,2 +1,40 @@
 [tools]
 ruby = "4.0.7"
+
+[tasks.test]
+description = "Run every test file in test/ via DragonRuby"
+shell = "bash -c"
+run = '''
+set -uo pipefail
+shopt -s globstar nullglob
+
+files=(test/**/*.rb)
+if [[ -z "${files[*]:-}" ]]; then
+  echo "No test files found in test/" >&2
+  exit 1
+fi
+
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+failed=()
+
+for file in "${files[@]}"; do
+  echo "==> $file"
+  ./dragonruby . --test "$file" > "$log" 2>&1
+
+  # DragonRuby exits 0 even when tests fail or the file raises while loading,
+  # so judge the run by its output.
+  if grep -q 'EXCEPTION' "$log" || ! grep -q '] 0 test(s) failed\.' "$log"; then
+    cat "$log"
+    failed+=("$file")
+  else
+    grep -o '[0-9]* test(s) passed\.' "$log"
+  fi
+done
+
+if [[ -n "${failed[*]:-}" ]]; then
+  echo >&2
+  printf 'FAILED: %s\n' "${failed[@]}" >&2
+  exit 1
+fi
+'''

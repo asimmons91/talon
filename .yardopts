@@ -1,0 +1,2 @@
+--load yard/talon_handlers.rb
+lib/**/*.rb

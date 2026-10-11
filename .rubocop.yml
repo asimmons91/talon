@@ -3,8 +3,12 @@ inherit_gem:
 
 AllCops:
   Include:
-    - "talon/**/*.rb"
+    - "lib/**/*.rb"
+    - "test/**/*.rb"
+    - "yard/**/*.rb"
 
 Style/StringLiterals:
   Include:
-    - "talon/**/*.rb"
+    - "lib/**/*.rb"
+    - "test/**/*.rb"
+    - "yard/**/*.rb"
