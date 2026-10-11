@@ -1,6 +1,6 @@
 module Talon
   # A collection of {GameObject}s that make up one screen or level of a
-  # {Game}. Subclass it to declare scene state and +:enter+ / +:exit+
+  # {Game}. Subclass it to declare scene state and {.on_enter} / {.on_exit}
   # callbacks.
   #
   # Objects spawned or destroyed during a tick are added or removed at a tick
@@ -13,9 +13,11 @@ module Talon
   #   class Level < Talon::Scene
   #     state :score, default: 0
   #
-  #     set_callback(:enter) do
+  #     on_enter do
   #       spawn(:player) { |go| go.add(Mover) }
   #     end
+  #
+  #     on_exit { puts "Final score: #{score}" }
   #   end
   class Scene
     attr_dr
@@ -26,6 +28,28 @@ module Talon
 
     # @return [Game, nil] the game running this scene, set when it is entered
     attr_accessor :game
+
+    # Registers callbacks to run when a {Game} enters the scene, before its
+    # first {#tick}. Typically used to spawn the scene's game objects.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the scene
+    # @return [void]
+    # @see Callbacks::ClassMethods#set_callback
+    def self.on_enter(*method_names, &block)
+      set_callback(:enter, *method_names, &block)
+    end
+
+    # Registers callbacks to run when the scene is torn down, before its game
+    # objects are destroyed and its state is cleared.
+    #
+    # @param method_names [Array<Symbol>] instance methods to call
+    # @yield [args] optional callback, evaluated on the scene
+    # @return [void]
+    # @see Callbacks::ClassMethods#set_callback
+    def self.on_exit(*method_names, &block)
+      set_callback(:exit, *method_names, &block)
+    end
 
     # @param state_values [Hash{Symbol => Object}] initial values for
     #   declared state
@@ -127,7 +151,7 @@ module Talon
       end
     end
 
-    # Runs the scene's +:exit+ callbacks, tears down every game object,
+    # Runs the scene's {.on_exit} callbacks, tears down every game object,
     # empties the scene, and then clears the scene's state and that of its
     # objects and components from +args.state+. Called by {Game#tick} when
     # switching scenes.

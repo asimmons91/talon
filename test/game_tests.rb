@@ -24,17 +24,17 @@ class GameTests
   class Level < Talon::Scene
     state :entered, default: 0
 
-    set_callback(:enter) do |args|
+    on_enter do |args|
       EVENTS << [ :enter_level, args ]
       self.entered += 1
       spawn(:counter) { |go| go.add(Counter, count: 10) }
     end
 
-    set_callback(:exit) { EVENTS << :exit_level }
+    on_exit { EVENTS << :exit_level }
   end
 
   class Menu < Talon::Scene
-    set_callback(:enter) { EVENTS << :enter_menu }
+    on_enter { EVENTS << :enter_menu }
   end
 
   class Empty < Talon::Scene; end

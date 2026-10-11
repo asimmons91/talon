@@ -41,16 +41,29 @@ class SceneTests
   class Level < Talon::Scene
     state :score, default: 0
 
-    set_callback(:enter) { |args| EVENTS << [ :enter, args ] }
-    set_callback(:exit) { |args| EVENTS << [ :exit, args ] }
+    on_enter { |args| EVENTS << [ :enter, args ] }
+    on_exit { |args| EVENTS << [ :exit, args ] }
   end
 
   class Empty < Talon::Scene; end
 
+  class NamedHooks < Talon::Scene
+    on_enter :setup
+    on_exit :cleanup
+
+    def setup(args)
+      EVENTS << [ :setup, args ]
+    end
+
+    def cleanup(_args)
+      EVENTS << :cleanup
+    end
+  end
+
   class ReadsScoreOnExit < Talon::Scene
     state :score, default: 0
 
-    set_callback(:exit) { EVENTS << [ :exit_score, score ] }
+    on_exit { EVENTS << [ :exit_score, score ] }
   end
 
   def scene_with_args(args, klass = Empty)
@@ -202,6 +215,17 @@ class SceneTests
     assert.nil! args.state.scenes[:"SceneTests::Level"]
     assert.nil! args.state.objects[:"SceneTests::Level"]
     assert.nil! args.state.components[:"SceneTests::Level"]
+  end
+
+  def test_enter_and_exit_accept_method_names(args, assert)
+    EVENTS.clear
+    scene = scene_with_args(args, NamedHooks)
+    scene.run_callbacks(:enter, args)
+    scene.teardown
+
+    assert.equal! EVENTS.size, 2
+    assert.true! EVENTS[0][1].equal?(args), "named enter callback should receive args"
+    assert.equal! EVENTS[1], :cleanup
   end
 
   def test_exit_callbacks_can_read_scene_state(args, assert)

@@ -9,9 +9,9 @@ module Talon
   # the order they were added.
   #
   # Hook blocks and methods may take one parameter, which receives the
-  # current DragonRuby +args+ (also available as {#args} and its helpers such
-  # as +outputs+ and +inputs+). A hand-written +update+ or +draw+ method must
-  # accept it.
+  # current DragonRuby +args+. The same object is always available inside a
+  # component as +args+, along with helpers such as +outputs+ and +inputs+.
+  # A hand-written +update+ or +draw+ method must accept it.
   #
   # @example
   #   class Mover < Talon::Component

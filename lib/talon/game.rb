@@ -24,8 +24,8 @@ module Talon
     end
 
     # Switches to another scene at the start of the next {#tick}. The current
-    # scene is torn down and the new one's +:enter+ callbacks run before it
-    # ticks.
+    # scene is torn down and the new one's {Scene.on_enter} callbacks run
+    # before it ticks.
     #
     # @param scene [Scene]
     # @return [void]
